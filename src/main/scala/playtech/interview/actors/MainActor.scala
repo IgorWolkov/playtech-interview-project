@@ -34,6 +34,10 @@ class MainActor extends Actor {
   private val state: mutable.Map[ElementId, BigDecimal] = mutable.Map()
   private val summationRequesters: mutable.Set[ActorRef] = mutable.Set()
 
+  // Needed when "old" ElementActors are poisoned but still alive
+  // but new one ready to be born
+  private var incarnation: Long = 0
+
   def receive: Receive = accumulating
 
   private def accumulating: Receive = {
@@ -165,10 +169,11 @@ class MainActor extends Actor {
     elementActors.clear()
     summationRequesters.clear()
     state.clear()
+    incarnation += 1
     context.become(accumulating)
   }
 
   private def getElementActor(id: ElementId): ActorRef =
-    elementActors.getOrElseUpdate(id, context.actorOf(ElementActor.props(id), s"ElementActor-${id.id}"))
+    elementActors.getOrElseUpdate(id, context.actorOf(ElementActor.props(id), s"ElementActor-$incarnation-${id.id}"))
 
 }

@@ -40,9 +40,6 @@ class MainActorSpec extends TestKit(ActorSystem("MainActorSpec"))
     }
 
     "respond with StateResult with an empty map when valid State message is sent" in {
-      val id = ElementId(Random.nextInt())
-      val value = BigDecimal(Random.nextDouble())
-
       val mainActor = system.actorOf(MainActor.props(), generateActorName)
 
       mainActor ! MainActor.Request.State
@@ -95,6 +92,34 @@ class MainActorSpec extends TestKit(ActorSystem("MainActorSpec"))
       expectMsg(MainActor.Response.StateResult(sumPerId))
     }
 
+    "respond with StateResult with a pair map when valid Add and State messages are sent. Immediately start new 'incarnation' " in {
+      val id = ElementId(Random.nextInt())
+      val value = BigDecimal(Random.nextDouble())
+
+      val mainActor = system.actorOf(MainActor.props(), generateActorName)
+
+      val message = MainActor.Request.Add(id, value)
+      mainActor ! message
+
+      expectMsg(MainActor.Response.AddResult(id))
+
+      mainActor ! MainActor.Request.State
+
+      expectMsg(MainActor.Response.StateResult(Map(id -> value)))
+
+      val newValue = BigDecimal(Random.nextDouble())
+      val newId = ElementId(Random.nextInt())
+      mainActor ! MainActor.Request.Add(id, newValue)
+      mainActor ! MainActor.Request.Add(newId, newValue)
+
+      expectMsg(MainActor.Response.AddResult(id))
+      expectMsg(MainActor.Response.AddResult(newId))
+
+      mainActor ! MainActor.Request.State
+
+      expectMsg(MainActor.Response.StateResult(Map(id -> newValue, newId -> newValue)))
+    }
+
     /*
       Missing obvious cases:
          * Simultaneous MainActor.Request.State requests from different actors
@@ -110,6 +135,6 @@ class MainActorSpec extends TestKit(ActorSystem("MainActorSpec"))
   }
 
   private def generateActorName: String =
-    s"Main-${Random.between(1, 100)}"
+    s"Main-${Random.between(1, 1000)}"
 
 }
